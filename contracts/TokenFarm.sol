@@ -10,9 +10,9 @@ contract TokenFarm is Ownable {
     mapping(address => mapping(address => uint256)) public stakingBalance;
     mapping(address => uint256) public uniqueTokensStaked;
     mapping(address => address) public tokenPriceFeedMapping;
-    
+
     address[] public stakers; // list of all stakers on our platform
-    
+
     IERC20 public dappToken;
     // stake tokens
     // unstake tokens
@@ -24,9 +24,13 @@ contract TokenFarm is Ownable {
     constructor(address _dappTokenAddress) public {
         dappToken = IERC20(_dappTokenAddress);
     }
-    function setPriceFeedContract(){
-        
 
+    function setPriceFeedContract(address _token, address _priceFeed)
+        public
+        onlyOwner
+    {
+        // min 13:19
+        tokenPriceFeedMapping[_token] = _priceFeed;
     }
 
     function issueTokens() public onlyOwner {
@@ -41,31 +45,52 @@ contract TokenFarm is Ownable {
             // based on their total value locked
             // min 13:11
             uint256 userTotalValue = getUserTotalValue(recipient);
-            dappToken.transfer(recipient, ????) // how much?
-            
+            //dappToken.transfer(recipient, ????) // how much?
+            dappToken.transfer(recipient, userTotalValue);
         }
     }
 
-    function getUserTotalValue(address _user) public view returns (uint256){
+    function getUserTotalValue(address _user) public view returns (uint256) {
         uint256 totalValue = 0;
         require(uniqueTokensStaked[_user] > 0, "No tokens staked!");
-        for (uint256 allowedTokensIndex =0 ; allowedTokensIndex < allowedTokens.length; allowedTokensIndex++ ){
-            totalValue = totalValue + getUserSingleTokenValue(_user, allowedTokens[allowedTokensIndex]);
+        for (
+            uint256 allowedTokensIndex = 0;
+            allowedTokensIndex < allowedTokens.length;
+            allowedTokensIndex++
+        ) {
+            totalValue =
+                totalValue +
+                getUserSingleTokenValue(
+                    _user,
+                    allowedTokens[allowedTokensIndex]
+                );
         }
     }
-    function getUserSingleTokenValue(address _user , address _token) public view returns(uint256){
+
+    function getUserSingleTokenValue(address _user, address _token)
+        public
+        view
+        returns (uint256)
+    {
         // if we have 1 eth stakes -> $2000 = 2000 coins
         // $1 at this moment = 1 coin
         // 200 DAI = 200
-        if (uniqueTokensStaked[_user] <=0 ){
+        if (uniqueTokensStaked[_user] <= 0) {
             return 0;
         }
-        getTokenValue(_token);
+        (uint256 price, uint256 decimals) = getTokenValue(_token);
+        return (stakingBalance[token][user] * price / (10 ** decimals));
     }
 
-    function getTokenValue(address _token) public view returns (uint256){
+    function getTokenValue(address _token) public view returns (uint256) {
         // priceFeedAddress
+        address priceFeedAddress = tokenPriceFeedMapping[_token];
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeedAddress);
+        (,int256 price ,,,) = priceFeed.latestRoundData();
+        uint256 decimals = uint256(priceFeed.decimals());
+        return (uint256(price), decimals);
     }
+
     function stakeTokens(uint256 _amount, address _token) public {
         require(_amount > 0, "Amount must be more than 0");
         // require(_token is allowed ??)
@@ -81,7 +106,14 @@ contract TokenFarm is Ownable {
         }
     }
 
-    function updateUniqueTokensStaked(address user, address token) internal {
+    function unstakeTokens(address _token) public {
+        uint256 balance = stakeBalance[_token][msg.sender];
+        require(balance> 0, "staking balance cannot be 0");
+        IER20(_token).transfer(msg.sender, balance);
+        stakingBalance[_token][msg.sender] = 0 ;
+        uniqueTokensStaked[msg.sender] = uniqueTokensStaked[msg.sender] -1;
+    }
+    function updateUniqueTokensStaked(address _user, address _token) internal {
         if (stakingBalance[_token][_user] <= 0) {
             uniqueTokensStaked[_user] = updateUniqueTokensStaked[_user] + 1;
         }
