@@ -34,18 +34,13 @@ contract TokenFarm is Ownable {
     }
 
     function issueTokens() public onlyOwner {
-        // issue tokens of all stakers
         for (
             uint256 stakersIndex = 0;
-            stakerIndex < stakers.length;
+            stakersIndex < stakers.length;
             stakersIndex++
         ) {
             address recipient = stakers[stakersIndex];
-            // send them a token reward
-            // based on their total value locked
-            // min 13:11
             uint256 userTotalValue = getUserTotalValue(recipient);
-            //dappToken.transfer(recipient, ????) // how much?
             dappToken.transfer(recipient, userTotalValue);
         }
     }
@@ -65,6 +60,7 @@ contract TokenFarm is Ownable {
                     allowedTokens[allowedTokensIndex]
                 );
         }
+        return totalValue;
     }
 
     function getUserSingleTokenValue(address _user, address _token)
@@ -79,14 +75,20 @@ contract TokenFarm is Ownable {
             return 0;
         }
         (uint256 price, uint256 decimals) = getTokenValue(_token);
-        return (stakingBalance[token][user] * price / (10 ** decimals));
+        return (stakingBalance[_token][_user] * price / (10**decimals));
     }
 
-    function getTokenValue(address _token) public view returns (uint256) {
+    function getTokenValue(address _token)
+        public
+        view
+        returns (uint256, uint256)
+    {
         // priceFeedAddress
         address priceFeedAddress = tokenPriceFeedMapping[_token];
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeedAddress);
-        (,int256 price ,,,) = priceFeed.latestRoundData();
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            priceFeedAddress
+        );
+        (, int256 price, , , ) = priceFeed.latestRoundData();
         uint256 decimals = uint256(priceFeed.decimals());
         return (uint256(price), decimals);
     }
@@ -107,15 +109,16 @@ contract TokenFarm is Ownable {
     }
 
     function unstakeTokens(address _token) public {
-        uint256 balance = stakeBalance[_token][msg.sender];
-        require(balance> 0, "staking balance cannot be 0");
-        IER20(_token).transfer(msg.sender, balance);
-        stakingBalance[_token][msg.sender] = 0 ;
-        uniqueTokensStaked[msg.sender] = uniqueTokensStaked[msg.sender] -1;
+        uint256 balance = stakingBalance[_token][msg.sender];
+        require(balance > 0, "staking balance cannot be 0");
+        IERC20(_token).transfer(msg.sender, balance);
+        stakingBalance[_token][msg.sender] = 0;
+        uniqueTokensStaked[msg.sender] = uniqueTokensStaked[msg.sender] - 1;
     }
+
     function updateUniqueTokensStaked(address _user, address _token) internal {
         if (stakingBalance[_token][_user] <= 0) {
-            uniqueTokensStaked[_user] = updateUniqueTokensStaked[_user] + 1;
+            uniqueTokensStaked[_user] = uniqueTokensStaked[_user] + 1;
         }
     }
 
