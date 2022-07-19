@@ -24,6 +24,7 @@ export const Main = () => {
     const {chainId, error} = useEthers()
     const networkName = chainId ? helperConfig[chainId] : "dev"
     const dappTokenAddress  = chainId ? networkMapping[String(chainId)]["DappToken"][0] : constants.AddressZero 
+    //console.log('dappTokenAddress: ', dappTokenAddress)
     // look into mapping the address of dapptoken of the network
 
     const wethTokenAddress = chainId ? brownieConfig["networks"][networkName]["weth_token"] : constants.AddressZero // brownie
