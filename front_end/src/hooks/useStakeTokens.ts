@@ -25,10 +25,8 @@ export const useStakeTokens = (tokenAddress: string) => {
     const erc20ABI = ERC20.abi
     const erc20Interface = new utils.Interface(erc20ABI)
     const erc20Contract = new Contract(tokenAddress, erc20Interface)
-    const { send: approveErc20Send, state: approveErc20State } = useContractFunction(erc20Contract, "approve", { transactionName: "Approve ERC20 transfer" })
-    
-    const [state, setState] = useState(approveErc20State)
-    
+    const { send: approveErc20Send, state: approveAndStakeErc20State } = useContractFunction(erc20Contract, "approve", { transactionName: "Approve ERC20 transfer" })
+  
     const approveAndStake = (amount: string) =>{
         setAmountToStake(amount)
         return approveErc20Send(tokenFarmAddress, amount)
@@ -36,19 +34,30 @@ export const useStakeTokens = (tokenAddress: string) => {
 
     
 
-    const { send: stakeSend, state: stakeState } = useContractFunction(tokenFarmContract, "stakeTokens", { transactionName: "Stake Tokens" })
+    const { send: stakeSend, state: stakeState } = 
+        useContractFunction(tokenFarmContract, "stakeTokens",
+         { transactionName: "Stake Tokens" });
 
     const [amountToStake, setAmountToStake] = useState("0")
 
     // useEffect : do something when something changes
     useEffect(() => {
-        if (approveErc20State.status === "Success") {
+        if (approveAndStakeErc20State.status === "Success") {
             // stake function
             stakeSend(amountToStake, tokenAddress); // (uint256 _amount, address _token)
         }
-    },[ approveErc20State,approveErc20State, tokenAddress])
+    },[approveAndStakeErc20State,amountToStake, tokenAddress])
 
-    return {approveAndStake, approveErc20State }
+    const [state , setState] = useState(approveAndStakeErc20State)
+
+    useEffect( () => {
+        if (approveAndStakeErc20State.status === "Success"){
+            setState(stakeState)
+        } else{
+            setState(approveAndStakeErc20State)
+        }
+    }, [approveAndStakeErc20State, stakeState]) 
+    return {approveAndStake, state }
 
     // stake tokens
 }

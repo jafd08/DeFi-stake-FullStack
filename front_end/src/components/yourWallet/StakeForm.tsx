@@ -1,7 +1,7 @@
 import { useEthers, useTokenBalance, useNotifications } from "@usedapp/core"
 import {Token} from "../Main"
 import {formatUnits} from "@ethersproject/units"
-import {Button, Input} from "@material-ui/core"
+import {Button, CircularProgress, Input} from "@material-ui/core"
 import React, {useEffect, useState} from "react"
 import { useStakeTokens } from "../../hooks/useStakeTokens"
 import { utils } from "ethers"
@@ -13,10 +13,8 @@ export interface StakeFormProps {
 
 export const StakeForm = ({token} : StakeFormProps) => {
     const {address : tokenAddress, name} = token
-    console.log('token: ', token)
     const {account} = useEthers()
     const tokenBalance = useTokenBalance(tokenAddress, account)
-    console.log('tokenBalance: ', tokenBalance)
     const formattedTokenBalance: number = tokenBalance ? parseFloat(formatUnits(tokenBalance, 18)) : 0
     
     const {notifications} = useNotifications()
@@ -27,13 +25,14 @@ export const StakeForm = ({token} : StakeFormProps) => {
         setAmount(newAmount)
     }
 
-    const {approveAndStake, approveErc20State} = useStakeTokens(tokenAddress)
+    const {approveAndStake, state: approveAndStakeErc20State} = useStakeTokens(tokenAddress)
     
     const handleStakeSubmit = () => {
         const amountAsWei = utils.parseEther(amount.toString())
         return approveAndStake(amountAsWei.toString())
     }
-
+    const isMining = approveAndStakeErc20State.status === "Mining"
+    
     useEffect(() => {
         // check if notifcs have changed
         if (notifications.filter( (notification)  => 
@@ -53,7 +52,9 @@ export const StakeForm = ({token} : StakeFormProps) => {
     return (
         <>
             <Input onChange={handleInputChange}/>
-            <Button onClick={handleStakeSubmit} color="primary" size="large"> STAKE !! </Button>
+            <Button onClick={handleStakeSubmit} disabled={isMining}
+            
+            color="primary" size="large"> { isMining ? <CircularProgress size={26} /> : "Stake!!!" } </Button>
         </>
     )
 }

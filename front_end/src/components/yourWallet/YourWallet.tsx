@@ -17,8 +17,6 @@ export const YourWallet = ({supportedTokens}: YourWalletProps) => {
 
     const handleChange = (event: React.ChangeEvent<{}>, newValue: string) => {
         setSelectedTokenIndex(parseInt(newValue))
-        console.log('selectedTokenIndex: ', selectedTokenIndex)
-        console.log('supportedTokens: ', supportedTokens)
     }
     return (
         <Box>
